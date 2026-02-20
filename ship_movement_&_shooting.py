@@ -20,7 +20,7 @@ player_width = 60
 player_height = 20
 player_x = WIDTH // 2 - player_width // 2
 player_y = HEIGHT - 60
-player_speed = 6
+player_speed = 6 
 
 # Bullet settings
 bullet_width = 5
