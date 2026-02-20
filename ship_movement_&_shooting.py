@@ -15,20 +15,67 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
 
-# Player settings
-player_width = 60
-player_height = 20
-player_x = WIDTH // 2 - player_width // 2
-player_y = HEIGHT - 60
-player_speed = 6 
+clock = pygame.time.Clock()
 
-# Bullet settings
-bullet_width = 5
-bullet_height = 15
-bullet_speed = 8
+
+# =========================
+# Player (Ship) Class
+# =========================
+class Player:
+    def __init__(self):
+        self.width = 60
+        self.height = 20
+        self.rect = pygame.Rect(
+            WIDTH // 2 - self.width // 2,
+            HEIGHT - 60,
+            self.width,
+            self.height
+        )
+        self.speed = 6
+
+    def move(self, keys):
+        if keys[pygame.K_LEFT] and self.rect.left > 0:
+            self.rect.x -= self.speed
+        if keys[pygame.K_RIGHT] and self.rect.right < WIDTH:
+            self.rect.x += self.speed
+
+    def draw(self, surface):
+        pygame.draw.rect(surface, GREEN, self.rect)
+
+    def shoot(self):
+        return Bullet(self.rect.centerx, self.rect.top)
+
+
+# =========================
+# Bullet Class
+# =========================
+class Bullet:
+    def __init__(self, x, y):
+        self.width = 5
+        self.height = 15
+        self.speed = 8
+        self.rect = pygame.Rect(
+            x - self.width // 2,
+            y,
+            self.width,
+            self.height
+        )
+
+    def move(self):
+        self.rect.y -= self.speed
+
+    def draw(self, surface):
+        pygame.draw.rect(surface, WHITE, self.rect)
+
+    def off_screen(self):
+        return self.rect.bottom < 0
+
+
+# =========================
+# Game Setup
+# =========================
+player = Player()
 bullets = []
-
-clock = pygame.time.Clock() 
 
 running = True
 while running:
@@ -40,31 +87,25 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-        # Shooting
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
-                bullet_x = player_x + player_width // 2 - bullet_width // 2
-                bullet_y = player_y
-                bullets.append(pygame.Rect(bullet_x, bullet_y, bullet_width, bullet_height))
+                bullets.append(player.shoot())
 
-    # Key movement
+    # Movement
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT] and player_x > 0:
-        player_x -= player_speed
-    if keys[pygame.K_RIGHT] and player_x < WIDTH - player_width:
-        player_x += player_speed
+    player.move(keys)
 
-    # Draw player
-    player = pygame.Rect(player_x, player_y, player_width, player_height)
-    pygame.draw.rect(screen, GREEN, player)
-
-    # Move bullets
+    # Update bullets
     for bullet in bullets[:]:
-        bullet.y -= bullet_speed
-        if bullet.y < 0:
+        bullet.move()
+        if bullet.off_screen():
             bullets.remove(bullet)
-        else:
-            pygame.draw.rect(screen, WHITE, bullet)
+
+    # Draw everything
+    player.draw(screen)
+
+    for bullet in bullets:
+        bullet.draw(screen)
 
     pygame.display.flip()
 
