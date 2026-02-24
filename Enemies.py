@@ -1,5 +1,6 @@
 import sys
 import time
+import random
 
 import pygame
 import pygame.locals
@@ -31,9 +32,25 @@ class Enemy:
 
     def display(self) -> None:
         pygame.draw.rect(screen, self.color, (self.x, self.y, 35, 35))
+
+    def shoot(self):
+        if random.random() < 0.1:
+            return Bullet2(10, screen)
+        else:
+            return None
+
     
+class Bullet2:
+    def __init__(self, x: int, surface: pygame.Surface) -> None:
+        self.surface = surface
+        self.vy = 5
+        self.x = x
 
+    def updateB(self):
+        self.y += self.vy
 
+    def displayB(self):
+        pygame.draw.rect(screen, "#FF0000", (self.x, self.y, 5, 10))
 
 
 
@@ -43,6 +60,9 @@ def main():
 
 
 
+
+
+    # Enemies in a row
     enemies = []
     start_x = 35
     start_y = 100
@@ -69,6 +89,11 @@ def main():
                 enemies.append(enemy)
 
 
+    # Bullet
+    Bullets = []
+   
+
+
     while True:
         screen.fill("#000000")
             
@@ -77,14 +102,22 @@ def main():
             if event.type == pygame.locals.QUIT:
                 pygame.quit()
                 sys.exit()
-
         for enemy in enemies:
-            enemy.display()
+            chance = enemy.shoot()
+            if chance != None:
+                Bullets.append(chance)
+
         for enemy in enemies:
             enemy.update()
+        for enemy in enemies:
+            enemy.display()
 
-   
 
+
+        for bullet in Bullets:
+            bullet.updateB()
+        for bullet in Bullets:
+            bullet.displayB()
     
 
 
