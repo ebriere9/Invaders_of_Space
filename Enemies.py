@@ -34,7 +34,7 @@ class Enemy:
         pygame.draw.rect(screen, self.color, (self.x, self.y, 35, 35))
 
     def shoot(self):
-        if random.random() < 0.000005:
+        if random.random() < 0.00001:
             return Bullet2(self.x+17.5, self.y+35, screen)
         else:
             return None
