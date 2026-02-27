@@ -17,7 +17,7 @@ class Enemy:
     def __init__(self, x: int, y: int, surface: pygame.Surface) -> None:
         self.x = x
         self.y = y
-        self.color = "#0DFF00"
+        self.color = "#FF0000"
         self.vx = 0
         self.vy = 0
         self.surface = surface
@@ -34,23 +34,24 @@ class Enemy:
         pygame.draw.rect(screen, self.color, (self.x, self.y, 35, 35))
 
     def shoot(self):
-        if random.random() < 0.1:
-            return Bullet2(10, screen)
+        if random.random() < 0.00001:
+            return Bullet2(self.x+17.5, self.y+35, screen)
         else:
             return None
 
     
 class Bullet2:
-    def __init__(self, x: int, surface: pygame.Surface) -> None:
+    def __init__(self, x: int, y: int, surface: pygame.Surface) -> None:
         self.surface = surface
         self.vy = 5
         self.x = x
+        self.y = y
 
     def updateB(self):
         self.y += self.vy
 
     def displayB(self):
-        pygame.draw.rect(screen, "#FF0000", (self.x, self.y, 5, 10))
+        pygame.draw.rect(screen, "#000DFF", (self.x, self.y, 5, 10))
 
 
 
