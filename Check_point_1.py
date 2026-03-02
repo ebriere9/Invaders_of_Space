@@ -165,6 +165,8 @@ while running:
     for bullet in bullets:
         bullet.draw(screen)
 
+    
+
     for enemy in enemies:
         enemy.draw(screen)
 
