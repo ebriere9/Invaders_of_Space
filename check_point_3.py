@@ -297,8 +297,11 @@ while running:
 
     # GAME OVER
     if player.lives<=0:
-        text=font.render("GAME OVER",True,WHITE)
+        text = font.render("GAME OVER",True,WHITE)
         screen.blit(text,(WIDTH//2-100,HEIGHT//2))
+        text2 = font.render(f"Score: {score}", True, WHITE)
+        screen.blit(text2, (WIDTH//2-100, HEIGHT//2+50))
+
         pygame.display.flip()
         pygame.time.delay(3000)
         break
