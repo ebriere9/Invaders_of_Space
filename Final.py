@@ -11,17 +11,14 @@ pygame.display.set_caption("Space Invaders")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 40)
 
-# Game state
-score = 0
-wave = 1
-kills = 0
-POWERUP_DURATION = 600  # 10 seconds at 60fps
-
 BLACK = (0,0,0)
 WHITE = (255,255,255)
 GREEN = (0,255,0)
 RED = (255,0,0)
 BLUE = (0,200,255)
+
+POWERUP_DURATION = 600
+
 
 # PLAYER 
 class Player:
@@ -29,7 +26,9 @@ class Player:
         self.rect = pygame.Rect(WIDTH//2-30, HEIGHT-60, 60, 20)
         self.base_speed = 6
         self.speed = self.base_speed
-        self.lives = 3
+        
+        self.max_lives = 3
+        self.lives = self.max_lives
 
         self.double_shot = False
         self.double_timer = 0
@@ -56,6 +55,10 @@ class Player:
             if self.speed_timer <= 0:
                 self.speed_boost = False
                 self.speed = self.base_speed
+
+    def add_life(self):
+        if self.lives < self.max_lives:
+            self.lives += 1
 
     def draw(self):
         pygame.draw.rect(screen, GREEN, self.rect)
@@ -148,7 +151,6 @@ def create_walls():
     walls=[]
     base_y = HEIGHT-200
     positions=[200,400,600,800]
-
     for pos in positions:
         for r in range(4):
             for c in range(6):
@@ -160,37 +162,51 @@ def create_enemies(current_wave):
     enemies=[]
     rows = 3 + (current_wave//3)
     cols = 12
-
     for r in range(rows):
         for c in range(cols):
             x = 80 + c*60
             y = 100 + r*60
             enemies.append(Enemy(x,y))
-
     return enemies
 
 
-# INITIAL SETUP 
-player = Player()
-bullets=[]
-enemy_bullets=[]
-powerups=[]
-walls=create_walls()
-enemies=create_enemies(wave)
+def reset_game():
+    return {
+        "score":0,
+        "wave":1,
+        "kills":0,
+        "enemy_speed":2,
+        "enemy_direction":1,
+        "offset_x":0,
+        "offset_y":0,
+        "player":Player(),
+        "bullets":[],
+        "enemy_bullets":[],
+        "powerups":[],
+        "walls":create_walls(),
+        "enemies":create_enemies(1)
+    }
 
-enemy_speed = 2
-enemy_direction = 1
-offset_x = 0
-offset_y = 0
 
-running=True
+# INITIAL GAME STATE
+game = reset_game()
 
-# GAME LOOP 
+running = True
+
+# MAIN LOOP
 while running:
 
     clock.tick(60)
     screen.fill(BLACK)
 
+    player = game["player"]
+    bullets = game["bullets"]
+    enemy_bullets = game["enemy_bullets"]
+    powerups = game["powerups"]
+    walls = game["walls"]
+    enemies = game["enemies"]
+
+    # EVENTS
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running=False
@@ -202,20 +218,19 @@ while running:
     player.move(keys)
     player.update_powerups()
 
-    # PLAYER BULLETS
+    # UPDATE BULLETS
     for bullet in bullets[:]:
         bullet.update()
         if bullet.rect.bottom < 0:
             bullets.remove(bullet)
 
-    # ENEMY BULLETS
     for bullet in enemy_bullets[:]:
         bullet.update()
         if bullet.rect.top > HEIGHT:
             enemy_bullets.remove(bullet)
 
     # ENEMY SHOOTING
-    shoot_chance = max(10,40-wave*3)
+    shoot_chance = max(10,40-game["wave"]*3)
     if enemies and random.randint(0,shoot_chance)==1:
         shooter=random.choice(enemies)
         enemy_bullets.append(
@@ -223,20 +238,20 @@ while running:
         )
 
     # ENEMY MOVEMENT
-    offset_x += enemy_speed * enemy_direction
+    game["offset_x"] += game["enemy_speed"] * game["enemy_direction"]
     move_down=False
 
     for enemy in enemies:
-        if enemy.base_x + offset_x > WIDTH-40 or enemy.base_x + offset_x < 0:
+        if enemy.base_x + game["offset_x"] > WIDTH-40 or enemy.base_x + game["offset_x"] < 0:
             move_down=True
             break
 
     if move_down:
-        enemy_direction *= -1
-        offset_y += 20
+        game["enemy_direction"] *= -1
+        game["offset_y"] += 20
 
     for enemy in enemies:
-        enemy.update(offset_x, offset_y)
+        enemy.update(game["offset_x"], game["offset_y"])
 
     # BULLET HITS ENEMY
     for bullet in bullets[:]:
@@ -244,15 +259,34 @@ while running:
             if bullet.rect.colliderect(enemy.rect):
                 bullets.remove(bullet)
                 enemies.remove(enemy)
-                score+=100
-                kills+=1
+                game["score"]+=100
+                game["kills"]+=1
 
-                if kills % 10 == 0:
-                    power_type=random.choice(["double","speed","shield","life"])
-                    powerups.append(PowerUp(enemy.rect.centerx, enemy.rect.centery, power_type))
+                if game["kills"] % 10 == 0:
+                    power_choices=["double","speed","shield"]
+                    if player.lives < player.max_lives:
+                        power_choices.append("life")
+                    powerups.append(
+                        PowerUp(enemy.rect.centerx, enemy.rect.centery, random.choice(power_choices))
+                    )
                 break
 
-    # POWERUP UPDATE
+    # BULLETS HIT WALLS
+    for bullet in bullets[:]:
+        for block in walls[:]:
+            if bullet.rect.colliderect(block.rect):
+                bullets.remove(bullet)
+                walls.remove(block)
+                break
+
+    for bullet in enemy_bullets[:]:
+        for block in walls[:]:
+            if bullet.rect.colliderect(block.rect):
+                enemy_bullets.remove(bullet)
+                walls.remove(block)
+                break
+
+    # POWERUPS
     for power in powerups[:]:
         power.update()
         if power.rect.top > HEIGHT:
@@ -269,7 +303,7 @@ while running:
             elif power.type=="shield":
                 player.shield=True
             elif power.type=="life":
-                player.lives+=1
+                player.add_life()
             powerups.remove(power)
 
     # ENEMY BULLET HITS PLAYER
@@ -281,27 +315,45 @@ while running:
             else:
                 player.lives-=1
             player.reset()
-            pygame.time.delay(300)
 
     # WAVE CLEAR
     if not enemies:
-        wave+=1
-        enemy_speed+=0.5
-        offset_x=0
-        offset_y=0
-        enemies=create_enemies(wave)
-        walls=create_walls()
-        bullets.clear()
-        enemy_bullets.clear()
-        pygame.time.delay(800)
+        game["wave"]+=1
+        game["enemy_speed"]+=0.5
+        game["offset_x"]=0
+        game["offset_y"]=0
+        game["walls"]=create_walls()
+        game["enemies"]=create_enemies(game["wave"])
 
-    # GAME OVER
-    if player.lives<=0:
-        text=font.render("GAME OVER",True,WHITE)
-        screen.blit(text,(WIDTH//2-100,HEIGHT//2))
-        pygame.display.flip()
-        pygame.time.delay(3000)
-        break
+    # GAME OVER SCREEN
+    if player.lives <= 0:
+        while True:
+            screen.fill(BLACK)
+
+            game_over_text = font.render("GAME OVER", True, WHITE)
+            score_text = font.render(f"Final Score: {game['score']}", True, WHITE)
+            restart_text = font.render("Press R to Restart or Q to Quit", True, WHITE)
+
+            screen.blit(game_over_text, (WIDTH//2 - 120, HEIGHT//2 - 60))
+            screen.blit(score_text, (WIDTH//2 - 140, HEIGHT//2))
+            screen.blit(restart_text, (WIDTH//2 - 220, HEIGHT//2 + 60))
+
+            pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_q:
+                        pygame.quit()
+                        sys.exit()
+                    if event.key == pygame.K_r:
+                        game = reset_game()
+                        break
+            else:
+                continue
+            break
 
     # DRAW
     player.draw()
@@ -321,19 +373,12 @@ while running:
     for power in powerups:
         power.draw()
 
-    # UI
     screen.blit(font.render(f"Lives: {player.lives}",True,WHITE),(20,20))
-    screen.blit(font.render(f"Score: {score}",True,WHITE),(WIDTH-200,20))
-    screen.blit(font.render(f"Wave: {wave}",True,WHITE),(WIDTH//2-60,20))
-
-    if player.double_shot:
-        screen.blit(font.render("DOUBLE SHOT",True,(255,215,0)),(20,60))
-    if player.speed_boost:
-        screen.blit(font.render("SPEED BOOST",True,(0,255,255)),(20,100))
-    if player.shield:
-        screen.blit(font.render("SHIELD",True,(0,150,255)),(20,140))
+    screen.blit(font.render(f"Score: {game['score']}",True,WHITE),(WIDTH-200,20))
+    screen.blit(font.render(f"Wave: {game['wave']}",True,WHITE),(WIDTH//2-60,20))
 
     pygame.display.flip()
 
 pygame.quit()
-sys.exit()
+sys.exit() 
+
